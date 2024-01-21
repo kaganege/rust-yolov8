@@ -1,0 +1,43 @@
+{
+  // Olası öznitelikler hakkında bilgi edinmek için IntelliSense kullanın.
+  // Mevcut özniteliklerin açıklamalarını görüntülemek için üzerine gelin.
+  // Daha fazla bilgi için şu adresi ziyaret edin: https://go.microsoft.com/fwlink/?linkid=830387
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug executable 'rust-yolov8'",
+      "cargo": {
+        "args": ["build", "--bin=rust-yolov8", "--package=rust-yolov8"],
+        "filter": {
+          "name": "rust-yolov8",
+          "kind": "bin"
+        }
+      },
+      "args": [
+        "C:\\Users\\kagan\\Videos\\Rick Astley - Never Gonna Give You Up Official Music Video.mp4"
+      ],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug unit tests in executable 'rust-yolov8'",
+      "cargo": {
+        "args": [
+          "test",
+          "--no-run",
+          "--bin=rust-yolov8",
+          "--package=rust-yolov8"
+        ],
+        "filter": {
+          "name": "rust-yolov8",
+          "kind": "bin"
+        }
+      },
+      "args": [],
+      "cwd": "${workspaceFolder}"
+    }
+  ]
+}

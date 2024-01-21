@@ -1,12 +1,10 @@
-use std::path::PathBuf;
-
 pub use ort::Result;
-use ort::{inputs, CUDAExecutionProvider, Session, SessionOutputs};
+use ort::{inputs, Session, SessionOutputs};
 
 use image::imageops::FilterType;
 use image::{DynamicImage, GenericImageView};
 
-use ndarray::{Array, Dim};
+use ndarray::{s, Array, Axis, Dim};
 
 pub const YOLOV8_WIDTH: u32 = 640;
 pub const YOLOV8_HEIGHT: u32 = 640;
@@ -51,6 +49,7 @@ impl YOLOv8 {
   }
 
   fn process_image(&self, img: DynamicImage) -> Array<f32, Dim<[usize; 4]>> {
+    // This takes long time
     let resized_img = img.resize_exact(YOLOV8_WIDTH, YOLOV8_HEIGHT, FilterType::CatmullRom);
 
     let mut input = Array::zeros((1, 3, 640, 640));
@@ -66,8 +65,8 @@ impl YOLOv8 {
     input
   }
 
-  pub fn process(&self, img: image::DynamicImage) -> Result<()> {
-    let (image_width, image_height) = (img.width(), img.height());
+  pub fn process(&self, img: image::DynamicImage) -> Result<Vec<(BoundingBox, &str, f32)>> {
+    let (img_width, img_height) = (img.width(), img.height());
     let input = self.process_image(img);
 
     let outputs: SessionOutputs = self.model.run(inputs!["images" => input.view()]?)?;
@@ -78,8 +77,54 @@ impl YOLOv8 {
       .t()
       .into_owned();
 
-    // FIXME: Continue here
+    let mut boxes: Vec<(BoundingBox, &str, f32)> = Vec::new();
+    let output = output.slice(s![.., .., 0]);
 
-    Ok(())
+    for row in output.axis_iter(Axis(0)) {
+      let row: Vec<_> = row.iter().copied().collect();
+      let (class_id, prob) = row
+        .iter()
+        // skip bounding box coordinates
+        .skip(4)
+        .enumerate()
+        .map(|(index, value)| (index, *value))
+        .reduce(|accum, row| if row.1 > accum.1 { row } else { accum })
+        .unwrap();
+
+      if prob < 0.5 {
+        continue;
+      }
+
+      let label = YOLOV8_CLASS_LABELS[class_id];
+      let xc = row[0] / 640. * (img_width as f32);
+      let yc = row[1] / 640. * (img_height as f32);
+      let w = row[2] / 640. * (img_width as f32);
+      let h = row[3] / 640. * (img_height as f32);
+
+      boxes.push((
+        BoundingBox {
+          x1: xc - w / 2.,
+          y1: yc - h / 2.,
+          x2: xc + w / 2.,
+          y2: yc + h / 2.,
+        },
+        label,
+        prob,
+      ));
+    }
+
+    boxes.sort_by(|box1, box2| box2.2.total_cmp(&box1.2));
+    let mut result: Vec<(BoundingBox, &str, f32)> = Vec::new();
+
+    while !boxes.is_empty() {
+      result.push(boxes[0]);
+      boxes = boxes
+        .iter()
+        .filter(|box1| intersection(&boxes[0].0, &box1.0) / union(&boxes[0].0, &box1.0) < 0.7)
+        .copied()
+        .collect();
+    }
+
+    Ok(result)
   }
 }
