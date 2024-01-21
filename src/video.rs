@@ -1,14 +1,11 @@
 extern crate ffmpeg_next as ffmpeg;
 pub use ffmpeg::*;
 
-use itertools::Itertools;
+// use itertools::Itertools;
 
 use self::util::frame::video::Video;
-use image::{
-  codecs::png::{PngEncoder, PngReader},
-  DynamicImage, ImageBuffer, ImageFormat, ImageOutputFormat, ImageResult, Pixel, Rgb, RgbImage,
-};
-use std::io::{self, Cursor, Read};
+use image::{DynamicImage, ImageFormat, ImageOutputFormat, ImageResult, RgbImage};
+use std::io::Cursor;
 
 pub struct Frame<'a> {
   width: u32,
